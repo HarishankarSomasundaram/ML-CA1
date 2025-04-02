@@ -1,0 +1,114 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hospital Strain Prediction</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .nav-link {
+            cursor: pointer;
+        }
+        .content-pane {
+            display: none;
+        }
+        .active-pane {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1 class="text-center my-4">Hospital Strain Prediction</h1>
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+                <div class="position-sticky">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-target="visualizations">Visualizations</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-target="training">Training</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-target="prediction">Prediction</a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div id="visualizations" class="content-pane active-pane">
+                    <h2>Visualizations</h2>
+                    <p>Graphs and analysis will be shown here.</p>
+                </div>
+                <div id="training" class="content-pane">
+                    <h2>Training</h2>
+                    <form id="training-form">
+                        <div class="mb-3">
+                            <label for="model" class="form-label">Select Model</label>
+                            <select id="model" class="form-select">
+                                <option value="random_forest">Random Forest</option>
+                                <option value="logistic_regression">Logistic Regression</option>
+                                <option value="svm">SVM</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="mc_runs" class="form-label">Number of Monte Carlo Runs</label>
+                            <input type="number" id="mc_runs" class="form-control" min="1" value="10">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Train Model</button>
+                    </form>
+                    <div id="training-result" class="mt-4"></div>
+                </div>
+                <div id="prediction" class="content-pane">
+                    <h2>Prediction</h2>
+                    <p>Predicted outcomes and insights will appear here.</p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.nav-link').forEach(item => {
+            item.addEventListener('click', function () {
+                document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+
+                document.querySelectorAll('.content-pane').forEach(pane => pane.classList.remove('active-pane'));
+                document.getElementById(this.getAttribute('data-target')).classList.add('active-pane');
+            });
+        });
+
+        $(document).ready(function() {
+            $('#training-form').submit(function(event) {
+                event.preventDefault();
+
+                let model = $('#model').val();
+                let mc_runs = $('#mc_runs').val();
+
+                $('#training-result').html('<p class="text-info">Training in progress...</p>');
+
+                $.ajax({
+                    url: '/train-model/',
+                    type: 'POST',
+                    data: {
+                        'model': model,
+                        'mc_runs': mc_runs,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        $('#training-result').html('<p class="text-success">Training Complete: ' + response.result + '</p>');
+                    },
+                    error: function() {
+                        $('#training-result').html('<p class="text-danger">Training failed. Please try again.</p>');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
