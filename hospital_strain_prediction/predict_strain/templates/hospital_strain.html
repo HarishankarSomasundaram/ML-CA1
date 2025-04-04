@@ -29,7 +29,7 @@
                 <div class="position-sticky">
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link active" data-target="visualizations">Visualizations</a>
+                             <a class="nav-link active" data-target="visualizations">Visualizations</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" data-target="training">Training</a>
@@ -43,7 +43,10 @@
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div id="visualizations" class="content-pane active-pane">
                     <h2>Visualizations</h2>
-                    <p>Graphs and analysis will be shown here.</p>
+                    <div class="chart-container">
+                        <h4>Hospital Strain Bar Chart</h4>
+                        <img src="data:image/png;base64,{{ chart_img }}" alt="Hospital Strain Chart" />
+                    </div>
                 </div>
                 <div id="training" class="content-pane">
                     <h2>Training</h2>
@@ -53,7 +56,7 @@
                             <select id="model" class="form-select">
                                 <option value="random_forest">Random Forest</option>
                                 <option value="logistic_regression">Logistic Regression</option>
-                                <option value="svm">SVM</option>
+                                <option value="support_vector_classification">Support Vector Classification</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -66,7 +69,65 @@
                 </div>
                 <div id="prediction" class="content-pane">
                     <h2>Prediction</h2>
-                    <p>Predicted outcomes and insights will appear here.</p>
+                    <form id="prediction-form">
+                        <div class="mb-3">
+                            <label for="predict_model" class="form-label">Select Model</label>
+                            <select id="predict_model" class="form-select">
+                                <option value="random_forest">Random Forest</option>
+                                <option value="logistic_regression">Logistic Regression</option>
+                                <option value="support_vector_classification">Support Vector Classification</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="region" class="form-label">Region</label>
+{#                            <select id="region" class="form-select">#}
+{#                                <option value="HSE Dublin & North East">HSE Dublin & North East</option>#}
+{#                                <option value="HSE South West">HSE South West</option>#}
+{#                                <option value="HSE Mid West">HSE Mid West</option>#}
+{#                                <option value="west">West</option>#}
+{#                            </select>#}
+                            <select id="region" class="form-select">
+                                <option value="">Select Region</option>
+                                <option value="HSE Dublin & North East">HSE Dublin & North East</option>
+                                <option value="HSE Dublin & Midlands">HSE Dublin & Midlands</option>
+                                <option value="HSE Dublin & South East">HSE Dublin & South East</option>
+                                <option value="HSE South West">HSE South West</option>
+                                <option value="HSE Mid West">HSE Mid West</option>
+                                <option value="HSE West & North West">HSE West & North West</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="hospital" class="form-label">Hospital</label>
+                            <select id="hospital" class="form-select">
+{#                                <option value="Connolly Hospital">Connolly Hospital</option>#}
+{#                                <option value="Cork University Hospital">Cork University Hospital</option>#}
+{#                                <option value="UH Limerick">UH Limerick</option>#}
+                                <option value="">Select Hospital</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="date" class="form-label">Date</label>
+                            <input type="date" id="date" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label for="surge_capacity" class="form-label">Surge Capacity in Use</label>
+                            <input type="number" id="surge_capacity" class="form-control" min="0" value="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="delayed_transfers" class="form-label">Delayed Transfers of Care</label>
+                            <input type="number" id="delayed_transfers" class="form-control" min="0" value="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="waiting_24hrs" class="form-label">No of Total Waiting >24hrs</label>
+                            <input type="number" id="waiting_24hrs" class="form-control"  min="0" value="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="waiting_75y_24hrs" class="form-label">No of >75+yrs Waiting >24hrs</label>
+                            <input type="number" id="waiting_75y_24hrs" class="form-control"  min="0" value="0">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Predict</button>
+                    </form>
+                    <div id="prediction-result" class="mt-4"></div>
                 </div>
             </main>
         </div>
@@ -84,6 +145,54 @@
         });
 
         $(document).ready(function() {
+            const hospitalsByRegion = {
+                "HSE Dublin & North East": [
+                    "Beaumont Hospital", "Cavan General Hospital", "Connolly Hospital",
+                    "Louth County Hospital", "Mater Misericordiae University Hospital",
+                    "National Orthopaedic Hospital Cappagh", "Our Lady of Lourdes Hospital",
+                    "Our Lady's Hospital Navan"
+                ],
+                "HSE Dublin & Midlands": [
+                    "CHI at Crumlin", "CHI at Tallaght", "CHI at Temple Street",
+                    "MRH Mullingar", "MRH Portlaoise", "MRH Tullamore",
+                    "Naas General Hospital", "St. James's Hospital", "St. Luke's Radiation Oncology Network",
+                    "Tallaght University Hospital"
+                ],
+                "HSE Dublin & South East": [
+                    "National Rehabilitation Hospital", "St. Columcille's Hospital",
+                    "St Luke's General Hospital Kilkenny", "St. Michael's Hospital",
+                    "St. Vincent's University Hospital", "Tipperary University Hospital",
+                    "UH Waterford", "Wexford General Hospital"
+                ],
+                "HSE South West": [
+                    "Bantry General Hospital", "Cork University Hospital", "Mallow General Hospital",
+                    "Mercy University Hospital", "South Infirmary Victoria University Hospital", "UH Kerry"
+                ],
+                "HSE Mid West": [
+                    "Ennis Hospital", "Nenagh Hospital", "St. John's Hospital Limerick", "UH Limerick"
+                ],
+                "HSE West & North West": [
+                    "Galway University Hospital", "Letterkenny University Hospital",
+                    "Mayo University Hospital", "Portiuncula University Hospital",
+                    "Roscommon University Hospital", "Sligo University Hospital"
+                ]
+            };
+            // Event listener for region selection
+            $('#region').change(function() {
+                let selectedRegion = $(this).val();
+                let hospitalDropdown = $('#hospital');
+
+                // Clear previous options
+                hospitalDropdown.empty();
+                hospitalDropdown.append('<option value="">Select Hospital</option>');
+
+                // Populate hospitals based on selected region
+                if (selectedRegion in hospitalsByRegion) {
+                    hospitalsByRegion[selectedRegion].forEach(hospital => {
+                        hospitalDropdown.append(`<option value="${hospital}">${hospital}</option>`);
+                    });
+                }
+            });
             $('#training-form').submit(function(event) {
                 event.preventDefault();
 
@@ -107,6 +216,37 @@
                         $('#training-result').html('<p class="text-danger">Training failed. Please try again.</p>');
                     }
                 });
+            });
+             $('#prediction-form').submit(function(event) {
+                event.preventDefault();
+
+                let model = $('#predict_model').val();
+                let region = $('#region').val();
+                let hospital = $('#hospital').val();
+                let date = $('#date').val();
+                let surge_capacity = $('#surge_capacity').val();
+                let delayed_transfers = $('#delayed_transfers').val();
+                let waiting_24hrs = $('#waiting_24hrs').val();
+                $.ajax({
+                    url: '/predict-output/',
+                    type: 'POST',
+                    data: {
+                        'model': model,
+                        'region': region,
+                        'hospital': hospital,
+                        'date': date,
+                        'surge_capacity': surge_capacity,
+                        'delayed_transfers': delayed_transfers,
+                        'waiting_24hrs': waiting_24hrs,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'  // Include CSRF token
+                    },
+                    success: function(response) {
+                        $('#prediction-result').html('<p class="text-success">Prediction: ' + response.prediction + '</p>');
+                    },
+                    error: function() {
+                        $('#prediction-result').html('<p class="text-danger">Prediction failed. Please try again.</p>');
+                    }
+            });
             });
         });
     </script>
